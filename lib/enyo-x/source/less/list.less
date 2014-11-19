@@ -10,33 +10,11 @@
   padding-top: 4px;
   padding-bottom: 4px;
   border-bottom: 1px solid @silver;
+
   .xv-list-column {
+    padding-left: 7px;
     &.last {
       border-right: none;
-    }
-    &.name-column {
-      padding-left: 7px;
-    }
-    &.first {
-      padding-left: 7px;
-    }
-    &.second {
-      padding-left: 7px;
-    }
-    &.third {
-      padding-left: 7px;
-    }
-    &.short {
-      padding-left: 7px;
-    }
-    &.small {
-      padding-left: 7px;
-    }
-    &.medium {
-      padding-left: 7px;
-    }
-    &.descr {
-      padding-left: 7px;
     }
   }
 }
@@ -51,7 +29,7 @@
     width: 200px
   }
   &.right-column {
-    width: 100px;
+    width: 115px;
     text-align: right;
   }
   &.short {
@@ -72,11 +50,7 @@
   &.third {
     width: 100px;
   }
-  &.money {
-    width: 75px;
-    text-align: right;
-  }
-  &.quantity {
+  &.money, &.quantity {
     width: 75px;
     text-align: right;
   }
@@ -89,8 +63,7 @@
 }
 
 .xv-list {
-  background-color: @white;
-
+  background: @ghost;
   .xv-list-item > * {
     display: inline-block;
     vertical-align: middle;
@@ -100,8 +73,6 @@
     background-color: @white;
     border-bottom: 1px solid @smoke;
     min-height: 32px;
-    padding: 2px;
-    padding-right: 36px;
     &.header {
       padding-top: 0;
     }
@@ -155,7 +126,7 @@
     .xv-list-item > * {
       vertical-align: top;
     }
-    .xv-list-item { 
+    .xv-list-item {
       padding-top: 7px !important;
       padding-bottom: 9px !important;
       border-bottom: 1px solid @silver !important;
@@ -225,6 +196,9 @@
   overflow: hidden;
   text-overflow: ellipsis;
   color: @black;
+  @media (max-width: 480px) {
+    padding: 2px 5px 2px 5px;
+  }
   &.header {
     padding: 4px;
     background: @gray;
@@ -269,7 +243,8 @@
     color: @dim-gray;
   }
   &.hyperlink {
-    color: blue;
+    color: @slate-blue;
+    cursor: pointer;
   }
   &.disabled {
     color: @dim-gray;

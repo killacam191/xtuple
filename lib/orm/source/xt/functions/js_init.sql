@@ -308,6 +308,37 @@ return (function () {
     return ret;
   }
 
+  /*
+    Mappings of document association sourceTypes to business objects.
+    Extensible by extensions.
+    https://github.com/xtuple/xtuple/pull/1964
+
+    The following keys are already used by the core application:
+
+    "C" = Customer
+    "CRMA" = CRM Account
+    "FILE" = File
+    "I" = Item
+    "INCDT" = Incident
+    "INV" = Invoice
+    "J" = Project
+    "Qquhead_id" = Quote. Yes really.
+    "S" = Sales Order
+    "T" = Contact
+    "URL" = Url
+
+    If you're adding your own, choose a generous namespace and object name.
+    The string is stored in postgres as a text field, so you've got plenty of characters.
+
+  */
+
+  XT.documentAssociations = {
+    FILE: "FileRelation",
+    I: "ItemRelation",
+    URL: "Url"
+  };
+
+
   /**
     Returns today's date at midnight.
     returns {Date}
@@ -325,6 +356,9 @@ return (function () {
    * @param {Boolean|String} Set flag to indicate the error was handled.
    */
   XT.error = function (error) {
+    /* Make sure XT.username gets unset on errors. */
+    XT.username = undefined;
+
     var message = error.stack + "\n";
 
     if (error.name === "handleError") {

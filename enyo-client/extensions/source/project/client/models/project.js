@@ -307,6 +307,11 @@ white:true*/
 
     XM.ProjectRelation.prototype.editableModel = "XM.Project";
 
+    XT.documentAssociations.J = {
+      model: "XM.ProjectRelation",
+      label: "_project".loc()
+    };
+
     /**
       @class
 
@@ -394,102 +399,6 @@ white:true*/
 
       @extends XM.Model
     */
-    XM.ProjectAccount = XM.Model.extend({
-      /** @scope XM.ProjectAccount.prototype */
-
-      recordType: "XM.ProjectAccount",
-
-      isDocumentAssignment: true
-
-    });
-
-    /**
-      @class
-
-      @extends XM.Model
-    */
-    XM.ProjectContact = XM.Model.extend({
-      /** @scope XM.ProjectContact.prototype */
-
-      recordType: "XM.ProjectContact",
-
-      isDocumentAssignment: true
-
-    });
-
-    /**
-      @class
-
-      @extends XM.Model
-    */
-    XM.ProjectItem = XM.Model.extend({
-      /** @scope XM.ProjectItem.prototype */
-
-      recordType: "XM.ProjectItem",
-
-      isDocumentAssignment: true
-
-    });
-
-    /**
-      @class
-
-      @extends XM.Model
-    */
-    XM.ProjectFile = XM.Model.extend({
-      /** @scope XM.ProjectFile.prototype */
-
-      recordType: "XM.ProjectFile",
-
-      isDocumentAssignment: true
-
-    });
-
-    /**
-      @class
-
-      @extends XM.Model
-    */
-    XM.ProjectUrl = XM.Model.extend({
-      /** @scope XM.ProjectUrl.prototype */
-
-      recordType: "XM.ProjectUrl"
-
-    });
-
-    /**
-      @class
-
-      @extends XM.Model
-    */
-    XM.ProjectProject = XM.Model.extend({
-      /** @scope XM.ProjectProject.prototype */
-
-      recordType: "XM.ProjectProject",
-
-      isDocumentAssignment: true
-
-    });
-
-    /**
-      @class
-
-      @extends XM.Model
-    */
-    XM.ProjectCustomer = XM.Model.extend(
-      /** @scope XM.ProjectCustomer.prototype */ {
-
-      recordType: "XM.ProjectCustomer",
-
-      isDocumentAssignment: true
-
-    });
-
-    /**
-      @class
-
-      @extends XM.Model
-    */
     XM.ProjectRecurrence = XM.Model.extend({
       /** @scope XM.ProjectRecurrence.prototype */
 
@@ -529,45 +438,11 @@ white:true*/
       @extends XM.Info
     */
     XM.ProjectTaskRelation = XM.Info.extend({
-      /** @scope XM.Task.prototype */
+      /** @scope XM.ProjctTaskRelation.prototype */
 
       recordType: "XM.ProjectTaskRelation",
 
       editableModel: "XM.ProjectTask"
-
-    });
-
-
-    /**
-      @class
-
-      @extends XM.ProjectTask
-    */
-    XM.Task = XM.ProjectTask.extend({
-      /** @scope XM.Task.prototype */
-
-      recordType: "XM.Task",
-
-      statusDidChange: function () {
-        XM.ProjectTask.prototype.statusDidChange.apply(this, arguments);
-        if (this.getStatus() === XM.Model.READY_CLEAN) {
-          this.setReadOnly("project");
-        }
-      }
-
-    });
-
-    /**
-      @class
-
-      @extends XM.Comment
-    */
-    XM.TaskComment = XM.Comment.extend({
-      /** @scope XM.ProjectTaskComment.prototype */
-
-      recordType: "XM.TaskComment",
-
-      sourceName: "TA"
 
     });
 
@@ -600,23 +475,6 @@ white:true*/
     /**
       @class
 
-      @extends XM.Info
-      @extends XM.ProjectStatus
-    */
-    XM.TaskListItem = XM.Info.extend({
-      /** @scope XM.ProjectTaskListItem.prototype */
-
-      recordType: "XM.TaskListItem",
-
-      editableModel: "XM.Task"
-
-    });
-
-    XM.TaskListItem = XM.TaskListItem.extend(XM.ProjectStatus);
-
-    /**
-      @class
-
       @extends XM.Workflow
     */
     XM.ProjectWorkflow = XM.Workflow.extend(
@@ -641,48 +499,6 @@ white:true*/
       recordType: "XM.ProjectWorkflowRelation",
 
       editableModel: "XM.ProjectWorkflow"
-
-    });
-
-    /**
-      @class
-
-      @extends XM.Model
-    */
-    XM.ProjectIncident = XM.Model.extend(
-      /** @scope XM.ProjectIncident.prototype */ {
-
-      recordType: "XM.ProjectIncident",
-
-      isDocumentAssignment: true
-
-    });
-
-    /**
-      @class
-
-      @extends XM.Model
-    */
-    XM.ProjectOpportunity = XM.Model.extend(
-      /** @scope XM.ProjectOpportunity.prototype */ {
-
-      recordType: "XM.ProjectOpportunity",
-
-      isDocumentAssignment: true
-
-    });
-
-    /**
-      @class
-
-      @extends XM.Model
-    */
-    XM.ProjectToDo = XM.Model.extend(
-      /** @scope XM.ProjectToDo.prototype */ {
-
-      recordType: "XM.ProjectToDo",
-
-      isDocumentAssignment: true
 
     });
 

@@ -1,12 +1,15 @@
+*.log
 *.DS_Store
 *.sw*
 *~
 *.backup
 *.deb
 node_modules
+bower_components
 npm-debug.log
 scripts/private
 scripts/lib/temp_query*
+scripts/output
 scripts/1
 scripts/lib/build
 scripts/lib/deploy

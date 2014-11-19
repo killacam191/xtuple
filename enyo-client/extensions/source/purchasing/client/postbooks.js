@@ -13,7 +13,7 @@ trailing:true, white:true, strict:false*/
     //
     panels = [
       {name: "honorificList", kind: "XV.HonorificList"},
-      {name: "expenseCategoryList", kind: "XV.ExpenseCategoryList"},  
+      {name: "expenseCategoryList", kind: "XV.ExpenseCategoryList"},
       {name: "itemList", kind: "XV.ItemList"},
       {name: "itemGroupList", kind: "XV.ItemGroupList"},
       {name: "classCodeList", kind: "XV.ClassCodeList"},
@@ -32,9 +32,17 @@ trailing:true, white:true, strict:false*/
       panels: [
         {name: "ItemSourceList", kind: "XV.ItemSourceList"},
         {name: "purchaseOrderList", kind: "XV.PurchaseOrderList"},
-        {name: "activityList", kind: "XV.ActivityList"}
+        {name: "purchasing_activityList", kind: "XV.ActivityList"}
       ]
     };
+
+    if (XT.session.settings.get("DashboardLite")) {
+      var charts = [
+        {name: "unclosedPurchaseOrders", label: "_unclosedPurchaseOrders".loc(), item: "XV.PurchaseOrderBarChart"}
+      ];
+      XT.app.$.postbooks.insertDashboardCharts(charts);
+    }
+
     XT.app.$.postbooks.insertModule(module, 0);
 
     relevantPrivileges = [
@@ -57,7 +65,6 @@ trailing:true, white:true, strict:false*/
       "ViewClassCodes",
       "ViewItemMasters",
       "ViewPurchaseOrders",
-      "ViewUOMs",
       "ViewTitles",
     ];
     XT.session.addRelevantPrivileges(module.name, relevantPrivileges);

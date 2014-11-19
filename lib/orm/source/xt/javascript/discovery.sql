@@ -77,6 +77,11 @@ select xt.install_js('XT','Discovery','xtuple', $$
       master.description = "Lets you get and manipulate all xTuple ERP business objects.";
       master.discoveryRestUrl = rootUrl + org + "/discovery/" + version + "/apis/" + version + "/rest";
       master.discoveryLink = "./apis/" + version + "/rest";
+      master.parameters = {
+        "resources": "object",
+        "description": "A query parameter array of resources you want to return. Useful for requesting a subset of resources instead of all of them. e.g. ?resources[]=Contact&resources[]=ToDo",
+        "location": "query"
+      };
       master.icons = {
         "x16": rootUrl + org + "/assets/api/api-16.png",
         "x32": rootUrl + org + "/assets/api/api-32.png"
@@ -108,7 +113,7 @@ select xt.install_js('XT','Discovery','xtuple', $$
         listItemOrms = [],
         org = plv8.execute("select current_database()"),
         ormAuth = {},
-        orms = [],
+        orms,
         schemas = {},
         services,
         version = "v1alpha1";
@@ -121,7 +126,12 @@ select xt.install_js('XT','Discovery','xtuple', $$
       /* Build up ORMs from array. */
       for (var i = 0; i < orm.length; i++) {
         gotOrms = XT.Discovery.getIsRestORMs(orm[i]);
-        orms = orms.concat(gotOrms).unique();
+        if (gotOrms) {
+          if (!(orms instanceof Array)) {
+            orms = [];
+          }
+          orms = orms.concat(gotOrms).unique();
+        }
       }
     } else {
       orms = XT.Discovery.getIsRestORMs();
@@ -220,24 +230,12 @@ select xt.install_js('XT','Discovery','xtuple', $$
      * Auth section.
      */
     discovery.auth = XT.Discovery.getAuth(orm, rootUrl);
+    discovery.auth = XT.Discovery.getServicesAuth(orm, discovery.auth, rootUrl);
 
     /*
      * Schema section.
      */
     XT.Discovery.getORMSchemas(orms, schemas);
-
-    if (!schemas) {
-      return false;
-    }
-
-    /* Get parent ListItem ORMs */
-    for (var i = 0; i < orms.length; i++) {
-      listItemOrms[i] = {"orm_namespace": orms[i].orm_namespace, "orm_type": orms[i].orm_type + "ListItem"};
-    }
-
-    if (listItemOrms.length > 0) {
-      XT.Discovery.getORMSchemas(listItemOrms, schemas);
-    }
 
     /* Sanitize the JSON-Schema. */
     XT.Discovery.sanitize(schemas);
@@ -254,9 +252,23 @@ select xt.install_js('XT','Discovery','xtuple', $$
       XT.Discovery.getServicesSchema(null, schemas);
     }
 
+    if (!schemas) {
+      return false;
+    }
+
+    /* Get parent ListItem ORMs */
+    if (orms && orms instanceof Array && orms.length) {
+      for (var i = 0; i < orms.length; i++) {
+        listItemOrms[i] = {"orm_namespace": orms[i].orm_namespace, "orm_type": orms[i].orm_type + "ListItem"};
+      }
+    }
+
+    if (listItemOrms.length > 0) {
+      XT.Discovery.getORMSchemas(listItemOrms, schemas);
+    }
+
     /* Sort schema properties alphabetically. */
     discovery.schemas = XT.Discovery.sortObject(schemas);
-
 
     /*
      * Resources section.
@@ -264,48 +276,50 @@ select xt.install_js('XT','Discovery','xtuple', $$
     discovery.resources = XT.Discovery.getResources(orm, rootUrl);
 
     /* Loop through resources and add JSON-Schema primKeyProp for methods that need it. */
-    for (var i = 0; i < orms.length; i++) {
-      var ormType = orms[i].orm_type,
-          ormNamespace = orms[i].orm_namespace,
-          thisOrm = XT.Orm.fetch(ormNamespace, ormType, {"superUser": true}),
-          key = XT.Discovery.getKeyProps(discovery.schemas[ormType]);
+    if (orms && orms instanceof Array && orms.length) {
+      for (var i = 0; i < orms.length; i++) {
+        var ormType = orms[i].orm_type,
+            ormNamespace = orms[i].orm_namespace,
+            thisOrm = XT.Orm.fetch(ormNamespace, ormType, {"superUser": true}),
+            key = XT.Discovery.getKeyProps(discovery.schemas[ormType]);
 
-      if (!key) {
-        /* This should never happen. */
-        plv8.elog(ERROR, "No key found for ormType: ", ormType);
-      }
+        if (!key) {
+          /* This should never happen. */
+          plv8.elog(ERROR, "No key found for ormType: ", ormType);
+        }
 
 
-      if (thisOrm.privileges.all.delete) {
-        discovery.resources[ormType].methods.delete.path = discovery.resources[ormType].methods.delete.path + key.name + "}";
-        discovery.resources[ormType].methods.delete.parameters = {};
-        discovery.resources[ormType].methods.delete.parameters[key.name] = key.props;
-        discovery.resources[ormType].methods.delete.parameters[key.name].location = 'path';
-        discovery.resources[ormType].methods.delete.parameterOrder = [key.name];
-      }
+        if (thisOrm.privileges.all.delete) {
+          discovery.resources[ormType].methods.delete.path = discovery.resources[ormType].methods.delete.path + key.name + "}";
+          discovery.resources[ormType].methods.delete.parameters = {};
+          discovery.resources[ormType].methods.delete.parameters[key.name] = key.props;
+          discovery.resources[ormType].methods.delete.parameters[key.name].location = 'path';
+          discovery.resources[ormType].methods.delete.parameterOrder = [key.name];
+        }
 
-      if (thisOrm.privileges.all.read) {
-        discovery.resources[ormType].methods.get.path = discovery.resources[ormType].methods.get.path + key.name + "}";
-        discovery.resources[ormType].methods.get.parameters = {};
-        discovery.resources[ormType].methods.get.parameters[key.name] = key.props;
-        discovery.resources[ormType].methods.get.parameters[key.name].location = 'path';
-        discovery.resources[ormType].methods.get.parameterOrder = [key.name];
-      }
+        if (thisOrm.privileges.all.read) {
+          discovery.resources[ormType].methods.get.path = discovery.resources[ormType].methods.get.path + key.name + "}";
+          discovery.resources[ormType].methods.get.parameters = {};
+          discovery.resources[ormType].methods.get.parameters[key.name] = key.props;
+          discovery.resources[ormType].methods.get.parameters[key.name].location = 'path';
+          discovery.resources[ormType].methods.get.parameterOrder = [key.name];
+        }
 
-      if (thisOrm.privileges.all.read) {
-        discovery.resources[ormType].methods.head.path = discovery.resources[ormType].methods.head.path + key.name + "}";
-        discovery.resources[ormType].methods.head.parameters = {};
-        discovery.resources[ormType].methods.head.parameters[key.name] = key.props;
-        discovery.resources[ormType].methods.head.parameters[key.name].location = 'path';
-        discovery.resources[ormType].methods.head.parameterOrder = [key.name];
-      }
+        if (thisOrm.privileges.all.read) {
+          discovery.resources[ormType].methods.head.path = discovery.resources[ormType].methods.head.path + key.name + "}";
+          discovery.resources[ormType].methods.head.parameters = {};
+          discovery.resources[ormType].methods.head.parameters[key.name] = key.props;
+          discovery.resources[ormType].methods.head.parameters[key.name].location = 'path';
+          discovery.resources[ormType].methods.head.parameterOrder = [key.name];
+        }
 
-      if (thisOrm.privileges.all.update) {
-        discovery.resources[ormType].methods.patch.path = discovery.resources[ormType].methods.patch.path + key.name + "}";
-        discovery.resources[ormType].methods.patch.parameters = {};
-        discovery.resources[ormType].methods.patch.parameters[key.name] = key.props;
-        discovery.resources[ormType].methods.patch.parameters[key.name].location = 'path';
-        discovery.resources[ormType].methods.patch.parameterOrder = [key.name];
+        if (thisOrm.privileges.all.update) {
+          discovery.resources[ormType].methods.patch.path = discovery.resources[ormType].methods.patch.path + key.name + "}";
+          discovery.resources[ormType].methods.patch.parameters = {};
+          discovery.resources[ormType].methods.patch.parameters[key.name] = key.props;
+          discovery.resources[ormType].methods.patch.parameters[key.name].location = 'path';
+          discovery.resources[ormType].methods.patch.parameterOrder = [key.name];
+        }
       }
     }
 
@@ -346,7 +360,7 @@ select xt.install_js('XT','Discovery','xtuple', $$
     var auth = {},
       gotOrms,
       org = plv8.execute("select current_database()"),
-      orms = [];
+      orms;
 
     rootUrl = rootUrl || "{rootUrl}";
 
@@ -356,7 +370,12 @@ select xt.install_js('XT','Discovery','xtuple', $$
       /* Build up ORMs from array. */
       for (var i = 0; i < orm.length; i++) {
         gotOrms = XT.Discovery.getIsRestORMs(orm[i]);
-        orms = orms.concat(gotOrms).unique();
+        if (gotOrms) {
+          if (!(orms instanceof Array)) {
+            orms = [];
+          }
+          orms = orms.concat(gotOrms).unique();
+        }
       }
     } else {
       orms = XT.Discovery.getIsRestORMs();
@@ -436,7 +455,12 @@ select xt.install_js('XT','Discovery','xtuple', $$
       /* Build up ORMs from array. */
       for (var i = 0; i < orm.length; i++) {
         gotOrms = XT.Discovery.getIsRestORMs(orm[i]);
-        orms = orms.concat(gotOrms).unique();
+        if (gotOrms) {
+          if (!(orms instanceof Array)) {
+            orms = [];
+          }
+          orms = orms.concat(gotOrms).unique();
+        }
       }
     } else {
       orms = XT.Discovery.getIsRestORMs();
@@ -567,12 +591,19 @@ select xt.install_js('XT','Discovery','xtuple', $$
           "query": {
             "type": "object",
             "description": "Query different resource properties based on their JSON-Schema. e.g. ?query[property1][BEGINS_WITH]=foo&query[property2][EQUALS]=bar",
-            "location": "query",
-            "$ref": "TODO: add this when moving to JSON-Schema draft v5"
+            "location": "query"
+            //"$ref": "TODO: add this when moving to JSON-Schema draft v5"
           },
           "orderby": {
             "type": "object",
             "description": "Specify the order of results for a filtered list request.",
+            "location": "query"
+          },
+          "rowLimit": {
+            "type": "integer",
+            "description": "Maximum number of entries to return. Optional.",
+            "format": "int32",
+            "minimum": "1",
             "location": "query"
           },
           "maxResults": {
@@ -625,12 +656,19 @@ select xt.install_js('XT','Discovery','xtuple', $$
           "query": {
             "type": "object",
             "description": "Query different resource properties based on their JSON-Schema. e.g. ?query[property1][BEGINS_WITH]=foo&query[property2][EQUALS]=bar",
-            "location": "query",
-            "$ref": "TODO"
+            "location": "query"
+            //"$ref": "TODO"
           },
           "orderby": {
             "type": "object",
             "description": "Specify the order of results for a filtered list request.",
+            "location": "query"
+          },
+          "rowLimit": {
+            "type": "integer",
+            "description": "Maximum number of entries to return. Optional.",
+            "format": "int32",
+            "minimum": "1",
             "location": "query"
           },
           "maxResults": {
@@ -720,15 +758,29 @@ select xt.install_js('XT','Discovery','xtuple', $$
    */
   XT.Discovery.getServicesSchema = function (orm, schemas) {
     "use strict";
+
     schemas = schemas || {};
 
-    var dispatchableObjects = XT.Discovery.getDispatchableObjects(orm),
+    var dispatchableObjects = [],
+      gotOrms,
       i,
       businessObject,
       businessObjectName,
       method,
       methodName,
       objectServices;
+
+    if (orm && typeof orm === 'string') {
+      dispatchableObjects = XT.Discovery.getDispatchableObjects(orm);
+    } else if (orm instanceof Array && orm.length) {
+      /* Build up ORMs from array. */
+      for (var i = 0; i < orm.length; i++) {
+        gotOrms = XT.Discovery.getDispatchableObjects(orm[i]);
+        dispatchableObjects = dispatchableObjects.concat(gotOrms).unique();
+      }
+    } else {
+      dispatchableObjects = XT.Discovery.getDispatchableObjects(null);
+    }
 
     for (i = 0; i < dispatchableObjects.length; i++) {
       businessObjectName = dispatchableObjects[i];
@@ -743,6 +795,8 @@ select xt.install_js('XT','Discovery','xtuple', $$
         if (typeof method === 'function' && method.description && method.schema) {
           for (var schema in method.schema) {
             schemas[schema] = method.schema[schema];
+            schemas[schema].id = schema;
+            schemas[schema].type = 'object';
           }
         }
       }
@@ -851,6 +905,67 @@ select xt.install_js('XT','Discovery','xtuple', $$
     return allServices;
   };
 
+  /**
+   * Return an API Discovery document's Services JSON-Schema.
+   *
+   * @param {String} Optional. An orm_type name like "Contact".
+   * @param {Object} Optional. A schema object to add schemas too.
+   * @returns {Object}
+   */
+  XT.Discovery.getServicesAuth = function (orm, auth, rootUrl) {
+    "use strict";
+
+    auth = auth || {oauth2: {scopes: {}}};
+    rootUrl = rootUrl || "{rootUrl}";
+
+    var dispatchableObjects = [],
+      gotOrms,
+      org = plv8.execute("select current_database()"),
+      i,
+      businessObject,
+      businessObjectName,
+      method,
+      methodName,
+      objectServices;
+
+    if (org.length !== 1) {
+      return false;
+    } else {
+      org = org[0].current_database;
+    }
+
+    if (orm && typeof orm === 'string') {
+      dispatchableObjects = XT.Discovery.getDispatchableObjects(orm);
+    } else if (orm instanceof Array && orm.length) {
+      /* Build up ORMs from array. */
+      for (var i = 0; i < orm.length; i++) {
+        gotOrms = XT.Discovery.getDispatchableObjects(orm[i]);
+        dispatchableObjects = dispatchableObjects.concat(gotOrms).unique();
+      }
+    } else {
+      dispatchableObjects = XT.Discovery.getDispatchableObjects(null);
+    }
+
+    for (i = 0; i < dispatchableObjects.length; i++) {
+      businessObjectName = dispatchableObjects[i];
+      businessObject = XM[businessObjectName];
+      objectServices = {};
+      for (methodName in businessObject) {
+        method = businessObject[methodName];
+        /*
+        Report only on documented dispatch methods. We document the methods by
+        tacking description and params attributes onto the function.
+        */
+        if (typeof method === 'function' && method.description && method.scope) {
+          auth.oauth2.scopes[rootUrl + org + "/auth/" + method.scope.camelToHyphen()] = {
+            description: "Use " + method.scope + " services"
+          }
+        }
+      }
+    }
+
+    return auth;
+  };
 
   /*
    * Helper function to convert date to string in yyyyMMdd format.
@@ -1065,7 +1180,7 @@ select xt.install_js('XT','Discovery','xtuple', $$
 
     schemas = schemas || {};
 
-    if (!orms.length) {
+    if (!orms || (orms instanceof Array && !orms.length)) {
       return false;
     }
 

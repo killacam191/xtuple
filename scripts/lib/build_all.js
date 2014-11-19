@@ -1,17 +1,21 @@
 /*jshint node:true, indent:2, curly:false, eqeqeq:true, immed:true, latedef:true, newcap:true, noarg:true,
 regexp:true, undef:true, strict:true, trailing:true, white:true */
-/*global X:true, Backbone:true, _:true, XM:true, XT:true*/
+/*global Backbone:true, _:true, XM:true, XT:true*/
 
 var _ = require('underscore'),
   async = require('async'),
-  build_database = require("./build_database"),
-  buildDatabase = build_database.buildDatabase,
+  buildDatabase = require("./build_database"),
+  buildDictionary = require("./build_dictionary"),
   buildClient = require("./build_client").buildClient,
+  defaultExtensions = require("./util/default_extensions").extensions,
   dataSource = require('../../node-datasource/lib/ext/datasource').dataSource,
   exec = require('child_process').exec,
   fs = require('fs'),
+  initDatabase = require("./util/init_database").initDatabase,
+  inspectDatabaseExtensions = require("./util/inspect_database").inspectDatabaseExtensions,
+  npm = require('npm'),
   path = require('path'),
-  unregister = build_database.unregister,
+  unregister = require("./util/unregister").unregister,
   winston = require('winston');
 
 /*
@@ -30,114 +34,135 @@ var _ = require('underscore'),
 
   var creds;
 
+  var buildAll = function (specs, creds, buildAllCallback) {
+    async.series([
+      function (done) {
+        // step 0: init the database, if requested
+
+        if (specs.length === 1 &&
+            specs[0].initialize &&
+            (specs[0].backup || specs[0].source)) {
+
+          // The user wants to initialize the database first (i.e. Step 0)
+          // Do that, then call this function again
+          initDatabase(specs[0], creds, function (err, res) {
+            specs[0].wasInitialized = true;
+            done(err, res);
+          });
+          return;
+        } else {
+          done();
+        }
+
+      },
+      function (done) {
+        if (specs[0].npmDev) {
+          done();
+          return;
+        }
+        // step 1: npm install extension if necessary
+        // an alternate approach would be only npm install these
+        // extensions on an npm install.
+        var allExtensions = _.reduce(specs, function (memo, spec) {
+          memo.push(spec.extensions);
+          return _.flatten(memo);
+        }, []);
+        var npmExtensions = _.filter(allExtensions, function (extName) {
+          return extName && extName.indexOf("node_modules") >= 0;
+        });
+        if (npmExtensions.length === 0) {
+          done();
+          return;
+        }
+        npm.load(function (err, res) {
+          if (err) {
+            done(err);
+            return;
+          }
+          npm.on("log", function (message) {
+            // log the progress of the installation
+            console.log(message);
+          });
+          async.map(npmExtensions, function (extName, next) {
+            npm.commands.install([path.basename(extName)], next);
+          }, done);
+        });
+      },
+      function (done) {
+        // step 2: build the client
+        buildClient(specs, done);
+      },
+      function (done) {
+        // step 3: build the database
+        buildDatabase.buildDatabase(specs, creds, function (databaseErr, databaseRes) {
+          if (databaseErr) {
+            buildAllCallback(databaseErr);
+            return;
+          }
+          var returnMessage = "\n";
+          _.each(specs, function (spec) {
+            returnMessage += "Database: " + spec.database + '\nDirectories:\n';
+            _.each(spec.extensions, function (ext) {
+              returnMessage += '  ' + ext + '\n';
+            });
+          });
+          done(null, "Build succeeded." + returnMessage);
+        });
+      },
+      function (done) {
+        // step 4: import all dictionary files
+        if (specs[0].clientOnly || specs[0].databaseOnly) {
+          // don't build dictionaries if the user doesn't want us to
+          console.log("Not importing the dictionaries");
+          return done();
+        }
+        if (specs[0].extensions.length === 1 && specs[0].extensions[0].indexOf("foundation-database") >= 0) {
+          // don't build dictionaries if we're just building the foundation
+          console.log("Not importing the dictionaries");
+          return done();
+        }
+        var dictionaryOptionsArray = _.map(specs, function (spec) {
+          return {
+            configPath: spec.configPath,
+            database: spec.database
+          };
+        });
+        async.map(dictionaryOptionsArray, buildDictionary.importAllDictionaries, done);
+      }
+    ], function (err, results) {
+      buildAllCallback(err, results && results[results.length - 2]);
+    });
+  };
 
   exports.build = function (options, callback) {
     var buildSpecs = {},
       databases = [],
       extension,
-      //
-      // Looks in a database to see which extensions are registered, and
-      // tacks onto that list the core directories.
-      //
+      configPath = options.config ?
+        path.resolve(process.cwd(), options.config) :
+        path.resolve(__dirname, "../../node-datasource/config.js"),
+      config = require(configPath),
       getRegisteredExtensions = function (database, callback) {
-        var result,
-          credsClone = JSON.parse(JSON.stringify(creds)),
-          existsSql = "select relname from pg_class where relname = 'ext'",
-          extSql = "SELECT * FROM xt.ext ORDER BY ext_load_order",
-          defaultExtensions = [
-            { ext_location: '/core-extensions', ext_name: 'crm' },
-            { ext_location: '/core-extensions', ext_name: 'project' },
-            { ext_location: '/core-extensions', ext_name: 'sales' },
-            { ext_location: '/core-extensions', ext_name: 'billing' },
-            { ext_location: '/core-extensions', ext_name: 'purchasing' }
-          ],
-          adaptExtensions = function (err, res) {
-            if (err) {
-              callback(err);
-              return;
-            }
-
-            var paths = _.map(res.rows, function (row) {
-              var location = row.ext_location,
-                name = row.ext_name,
-                extPath;
-
-              if (location === '/core-extensions') {
-                extPath = path.join(__dirname, "/../../enyo-client/extensions/source/", name);
-              } else if (location === '/xtuple-extensions') {
-                extPath = path.join(__dirname, "../../../xtuple-extensions/source", name);
-              } else if (location === '/private-extensions') {
-                extPath = path.join(__dirname, "../../../private-extensions/source", name);
-              }
-              return extPath;
-            });
-
-            paths.unshift(path.join(__dirname, "../../enyo-client")); // core path
-            paths.unshift(path.join(__dirname, "../../lib/orm")); // lib path
-            callback(null, {
-              extensions: paths,
-              database: database,
-              keepSql: options.keepSql,
-              wipeViews: options.wipeViews,
-              clientOnly: options.clientOnly,
-              databaseOnly: options.databaseOnly,
-              queryDirect: options.queryDirect
-            });
-          };
-
+        var credsClone = JSON.parse(JSON.stringify(creds));
         credsClone.database = database;
-        dataSource.query(existsSql, credsClone, function (err, res) {
-          if (err) {
-            callback(err);
-            return;
-          }
-          if (res.rowCount === 0) {
-            // xt.ext doesn't exist, because this is probably a brand-new DB.
-            // No problem! Give them the core extensions.
-            adaptExtensions(null, { rows: defaultExtensions });
-          } else {
-            dataSource.query(extSql, credsClone, adaptExtensions);
-          }
-        });
-      },
-      buildAll = function (specs, creds, buildAllCallback) {
-        buildClient(specs, function (err, res) {
-          if (err) {
-            buildAllCallback(err);
-            return;
-          }
-          buildDatabase(specs, creds, function (databaseErr, databaseRes) {
-            var returnMessage;
-            if (databaseErr && specs[0].wipeViews) {
-              buildAllCallback(databaseErr);
-              return;
-
-            } else if (databaseErr) {
-              buildAllCallback("Build failed. Try wiping the views next time by running me with the -w flag.");
-              return;
-            }
-            returnMessage = "\n";
-            _.each(specs, function (spec) {
-              returnMessage += "Database: " + spec.database + '\nDirectories:\n';
-              _.each(spec.extensions, function (ext) {
-                returnMessage += '  ' + ext + '\n';
-              });
-            });
-            buildAllCallback(null, "Build succeeded." + returnMessage);
+        inspectDatabaseExtensions(credsClone, function (err, paths) {
+          callback(null, {
+            extensions: paths,
+            configPath: configPath,
+            database: database,
+            keepSql: options.keepSql,
+            npmDev: options.npmDev,
+            populateData: options.populateData ||
+              (options.source && options.source.indexOf("postbooks_demo_data.sql") >= 0),
+            wipeViews: options.wipeViews,
+            clientOnly: options.clientOnly,
+            databaseOnly: options.databaseOnly
           });
         });
-      },
-      config;
+      };
 
-    // the backup path is not relative if it starts with a slash
-    if (options.config && options.config.substring(0, 1) === '/') {
-      config = require(options.config);
-    } else if (options.config) {
-      config = require(path.join(process.cwd(), options.config));
-    } else {
-      config = require(path.join(__dirname, "../../node-datasource/config.js"));
-    }
     creds = config.databaseServer;
+    creds.encryptionKeyFile = config.datasource.encryptionKeyFile;
     creds.host = creds.hostname; // adapt our lingo to node-postgres lingo
     creds.username = creds.user; // adapt our lingo to orm installer lingo
 
@@ -153,56 +178,67 @@ var _ = require('underscore'),
       // This request doesn't make any sense.
       callback("Make up your mind.");
 
+    } else if (options.backup && options.source) {
+      callback("You can build from backup or from source but not both.");
+
+    } else if (options.backup && options.extension) {
+      callback("When you're building from a backup you get whatever extensions the backup merits.");
+
     } else if (options.initialize &&
-        options.backup &&
+        (options.backup || options.source) &&
         options.database &&
-        !options.extension) {
+        (!options.extension || options.extension === 'foundation-database')) {
       // Initialize the database. This is serious business, and we only do it if
       // the user does all the arguments correctly. It must be on one database only,
       // with no extensions, with the initialize flag, and with a backup file.
 
       buildSpecs.database = options.database;
-      // the backup path is not relative if it starts with a slash
-      buildSpecs.backup = options.backup.substring(0, 1) === '/' ?
-        options.backup :
-        path.join(process.cwd(), options.backup);
+      if (options.backup) {
+        buildSpecs.backup = path.resolve(process.cwd(), options.backup);
+        buildSpecs.extensions = false;
+        // we'll determine the extensions by looking at the db after restore
+      }
+      if (options.source) {
+        buildSpecs.source = path.resolve(process.cwd(), options.source);
+        // if we initialize with the foundation, that means we want
+        // an unmobilized build
+        buildSpecs.extensions = options.extension ?
+          [options.extension] :
+          defaultExtensions;
+      }
+      buildSpecs.configPath = configPath;
       buildSpecs.initialize = true;
       buildSpecs.keepSql = options.keepSql;
+      buildSpecs.npmDev = options.npmDev;
+      buildSpecs.populateData = options.populateData;
+      buildSpecs.populateData = options.populateData ||
+        (options.source && options.source.indexOf("postbooks_demo_data.sql") >= 0);
       buildSpecs.wipeViews = options.wipeViews;
       buildSpecs.clientOnly = options.clientOnly;
       buildSpecs.databaseOnly = options.databaseOnly;
-      buildSpecs.queryDirect = options.queryDirect;
-      buildSpecs.extensions = [
-        path.join(__dirname, '../../lib/orm'),
-        path.join(__dirname, '../../enyo-client'),
-        path.join(__dirname, '../../enyo-client/extensions/source/crm'),
-        path.join(__dirname, '../../enyo-client/extensions/source/project'),
-        path.join(__dirname, '../../enyo-client/extensions/source/sales'),
-        path.join(__dirname, '../../enyo-client/extensions/source/billing'),
-        path.join(__dirname, '../../enyo-client/extensions/source/purchasing'),
-      ];
       buildAll([buildSpecs], creds, callback);
 
-    } else if (options.initialize || options.backup) {
+    } else if (options.initialize || options.backup || options.source) {
       // The user has not been sufficiently serious.
       callback("If you want to initialize the database, you must specifify " +
-        " a database, and use no extensions, and use both the init and the backup flags");
+        " a database, and use no extensions, and use both the init and either the backup or source flags");
 
     } else if (options.extension) {
       // the user has specified an extension to build or unregister
       // extensions are assumed to be specified relative to the cwd
       buildSpecs = _.map(databases, function (database) {
-        // the extension is not relative if it starts with a slash
-        var extension = options.extension.substring(0, 1) === '/' ?
-          options.extension :
-          path.join(process.cwd(), options.extension);
+        var extension = path.resolve(process.cwd(), options.extension);
         return {
+          configPath: configPath,
           database: database,
+          frozen: options.frozen,
+          npmDev: options.npmDev,
           keepSql: options.keepSql,
+          populateData: options.populateData ||
+            (options.source && options.source.indexOf("postbooks_demo_data.sql") >= 0),
           wipeViews: options.wipeViews,
           clientOnly: options.clientOnly,
           databaseOnly: options.databaseOnly,
-          queryDirect: options.queryDirect,
           extensions: [extension]
         };
       });

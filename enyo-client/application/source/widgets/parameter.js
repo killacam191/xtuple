@@ -175,7 +175,8 @@ trailing:true, white:true, strict:false*/
       // see if toggle is on and update params
       _.each(keys, function (key) {
         _.each(actTypes[key], function (obj) {
-          if (that.$[_namify(obj)].getValue()) {
+          // the pluralize function in _namify is imperfect
+          if (that.$[_namify(obj)] && that.$[_namify(obj)].getValue()) {
             value.push(obj.type);
           }
         });
@@ -231,7 +232,6 @@ trailing:true, white:true, strict:false*/
     name: "XV.ContactListParameters",
     kind: "XV.ParameterWidget",
     characteristicsRole: "isContacts",
-    showLayout: true,
     components: [
       {kind: "onyx.GroupboxHeader", content: "_contact".loc()},
       {name: "isActive", attr: "isActive", label: "_showInactive".loc(), defaultKind: "XV.CheckboxWidget",
@@ -791,12 +791,33 @@ trailing:true, white:true, strict:false*/
       {name: "owner", label: "_owner".loc(), attr: "owner", defaultKind: "XV.UserAccountWidget"},
       {name: "assignedTo", label: "_assignedTo".loc(), attr: "assignedTo", defaultKind: "XV.UserAccountWidget"},
       {name: "user", label: "_user".loc(), attr: ["owner.username", "assignedTo.username"], defaultKind: "XV.UserAccountWidget"},
+      {kind: "onyx.GroupboxHeader", content: "_startDate".loc()},
+      {name: "fromStartDate", label: "_fromDate".loc(), attr: "startDate", operator: ">=",
+        filterLabel: "_from".loc() + " " + "_startDate".loc() + " " + "_date".loc(),
+        defaultKind: "XV.DateWidget"},
+      {name: "toStartDate", label: "_toDate".loc(), attr: "startDate", operator: "<=",
+        filterLabel: "_to".loc() + " " + "_startDate".loc() + " " + "_date".loc(),
+        defaultKind: "XV.DateWidget"},
+      {kind: "onyx.GroupboxHeader", content: "_assignDate".loc()},
+      {name: "fromAssignDate", label: "_fromDate".loc(), attr: "assignDate", operator: ">=",
+        filterLabel: "_from".loc() + " " + "_assignedDate".loc() + " " + "_date".loc(),
+        defaultKind: "XV.DateWidget"},
+      {name: "toAssignDate", label: "_toDate".loc(), attr: "assignDate", operator: "<=",
+        filterLabel: "_to".loc() + " " + "_assignedDate".loc() + " " + "_date".loc(),
+        defaultKind: "XV.DateWidget"},
       {kind: "onyx.GroupboxHeader", content: "_targetClose".loc()},
       {name: "fromTargetDate", label: "_fromDate".loc(), attr: "targetClose", operator: ">=",
         filterLabel: "_from".loc() + " " + "_targetClose".loc() + " " + "_date".loc(),
         defaultKind: "XV.DateWidget"},
       {name: "toTargetDate", label: "_toDate".loc(), attr: "targetClose", operator: "<=",
         filterLabel: "_to".loc() + " " + "_targetClose".loc() + " " + "_date".loc(),
+        defaultKind: "XV.DateWidget"},
+      {kind: "onyx.GroupboxHeader", content: "_actualDate".loc()},
+      {name: "fromActualDate", label: "_fromDate".loc(), attr: "actualDate", operator: ">=",
+        filterLabel: "_from".loc() + " " + "_actualDate".loc() + " " + "_date".loc(),
+        defaultKind: "XV.DateWidget"},
+      {name: "toActualDate", label: "_toDate".loc(), attr: "actualDate", operator: "<=",
+        filterLabel: "_to".loc() + " " + "_actualDate".loc() + " " + "_date".loc(),
         defaultKind: "XV.DateWidget"}
     ]
   });

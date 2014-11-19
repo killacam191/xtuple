@@ -80,7 +80,6 @@ trailing:true, white:true, strict:false*/
     // ..........................................................
     // PURCHASE ORDER
     //
-
     enyo.kind({
       name: "XV.PurchaseOrderList",
       kind: "XV.List",
@@ -94,7 +93,11 @@ trailing:true, white:true, strict:false*/
           notify: false},
         {name: "unrelease", privilege: "ReleasePurchaseOrders",
           prerequisite: "canUnrelease",
-          method: "doUnrelease", notify: false}
+          method: "doUnrelease", notify: false},
+        {name: "print", privilege: "ViewPurchaseOrders",
+          method: "doPrint", isViewMethod: true},
+        {name: "email", privilege: "ViewPurchaseOrders",
+          method: "doEmail", isViewMethod: true}
       ],
       query: {orderBy: [
         {attribute: 'number'}
@@ -136,6 +139,7 @@ trailing:true, white:true, strict:false*/
       }
     });
 
+    XV.registerModelList("XM.PurchaseOrderListItem", "XV.PurchaseOrderList");
     // ..........................................................
     // PURCHASE TYPE
     //

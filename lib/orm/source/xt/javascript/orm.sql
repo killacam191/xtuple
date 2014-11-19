@@ -338,6 +338,7 @@ select xt.install_js('XT','Orm','xtuple', $$
       ext.nameSpace = nameSpace;
       ext.table = orm.table;
       ext.isChild = orm.isChild;
+      ext.isExtension = orm.isExtension;
       ext.relations = orm.relations;
       ext.properties = orm.properties;
       ext.order = orm.order;
@@ -418,6 +419,7 @@ select xt.install_js('XT','Orm','xtuple', $$
   */
   XT.Orm.getProperty = function (orm, property, returnEntireOrm) {
     var i,
+      extension,
       ret;
 
     /* look for property on the first level */
@@ -430,7 +432,9 @@ select xt.install_js('XT','Orm','xtuple', $$
       /* look recursively for property on extensions */
       if(orm.extensions) {
         for (i = 0; i < orm.extensions.length; i++) {
-          ret = XT.Orm.getProperty(orm.extensions[i], property, returnEntireOrm);
+          extension = orm.extensions[i];
+          extension.isExtension = true;
+          ret = XT.Orm.getProperty(extension, property, returnEntireOrm);
           if(ret) return ret;
         }
       }
@@ -655,6 +659,16 @@ select xt.install_js('XT','Orm','xtuple', $$
           } else {
             conditions = toMany.column ? type + '."' + inverse + '" = ' +
               (toMany.isBase ? "t1" : tblAlias) + '.' + toMany.column : 'true';
+
+            /*
+              Document associations have a second key that must be joined on here,
+              to avoid different business objects with the same ID picking up
+              each other's document associations
+            */
+            if (toMany.sourceType) {
+              conditions = conditions + " AND " + type + ".\"sourceType\" = '" +
+                toMany.sourceType + "'";
+            }
           }
 
           /* build select */

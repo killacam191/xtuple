@@ -6,7 +6,7 @@ trailing:true, white:true, strict: false*/
 (function () {
 
   // ..........................................................
-  // ACCOUNT
+  // EMAIL
   //
 
   /**
@@ -45,7 +45,6 @@ trailing:true, white:true, strict: false*/
     query: {orderBy: [
       {attribute: 'number'}
     ]},
-    allowPrint: true,
     parameterWidget: "XV.AccountListParameters",
     components: [
       {kind: "XV.ListItem", components: [
@@ -55,7 +54,7 @@ trailing:true, white:true, strict: false*/
             {kind: "XV.ListAttr", attr: "name"}
           ]},
           {kind: "XV.ListColumn", classes: "right-column", components: [
-            {kind: "XV.ListAttr", attr: "primaryContact.phone", },
+            {kind: "XV.ListAttr", attr: "primaryContact.phone"},
             {kind: "XV.ListAttr", attr: "primaryContact.primaryEmail"}
           ]},
           {kind: "XV.ListColumn", fit: true, components: [
@@ -83,15 +82,22 @@ trailing:true, white:true, strict: false*/
     published: {
       activityActions: []
     },
+    actions: [
+      {name: "reassignUser",
+        method: "reassignUser",
+        prerequisite: "canReassign",
+        isViewMethod: true,
+        notify: false}
+    ],
     events: {
-      "onNotify": ""
+      onNotify: ""
     },
     query: {orderBy: [
       {attribute: 'dueDate'},
       {attribute: 'name'},
       {attribute: 'uuid'}
     ]},
-    allowPrint: true,
+    multiSelect: true,
     components: [
       {kind: "XV.ListItem", components: [
         {kind: "FittableColumns", components: [
@@ -113,13 +119,79 @@ trailing:true, white:true, strict: false*/
           {kind: "XV.ListColumn", fit: true, components: [
             {kind: "XV.ListAttr", attr: "owner.username",
               placeholder: "_noOwner".loc()},
-            {kind: "XV.ListAttr", attr: "assignedTo.username",
+            {kind: "XV.ListAttr", attr: "assignedTo.username", name: "assignedTo",
               placeholder: "_noAssignedTo".loc()}
           ]}
         ]}
       ]}
     ],
+    selectedModels: function () {
+      var that = this,
+        collection = this.getValue(),
+        models = [],
+        selected;
+      if (collection.length) {
+        selected = _.keys(this.getSelection().selected);
+        // Using the selected index keys, go grab the models and return them in an array
+        models.push(_.map(selected, function (index) {
+          return that.getModel(index);
+        }));
+      }
+      return models[0];
+    },
+    reassignUser: function () {
+      var callback = function (resp, optionsObj) {
+        var navigator = this.$.navigator;
+        if (!resp.answer) {
+          return;
+        } else if (!resp.componentValue) {
+          navigator.$.contentPanels.getActive().doNotify({
+            type: XM.Model.WARNING,
+            message: "_noUserSelected".loc()
+          });
+        } else {
+          // Gather selected models, assemble dispatch params object and send dispatch to server
+          var options = {},
+            params = [],
+            models = optionsObj.models,
+            assignedTo = resp.componentValue.id,
+            ids = _.map(models, function (model) {
+              return model.id;
+            });
+          // Loop through and assemble dispatch param object
+          for (var i = 0; i < ids.length; i++) {
+            params.push({
+              activityId: ids[i],
+              username: assignedTo
+            });
+          }
+
+          // TODO - dispatch error handling
+          options.success = function (resp) {
+            navigator.requery();
+            return;
+          };
+
+          // Send to server with dispath. Need to pass options.error callback for error handling
+          XM.Model.prototype.dispatch("XM.Activity", "reassignUser", params, options);
+        }
+      };
+
+      this.doNotify({
+        type: XM.Model.QUESTION,
+        callback: callback,
+        message: "_reassignSelectedActivities".loc(),
+        yesLabel: "_reassign".loc(),
+        noLabel: "_cancel".loc(),
+        component: {kind: "XV.UserPicker", name: "assignTo", label: "_assignTo".loc()},
+        options: {models: this.selectedModels()}
+      });
+    },
     getWorkspace: function () {
+      if (_.isUndefined(this._lastTapIndex)) {
+        // don't respond to events waterfalled from other models
+        return;
+      }
       var collection = this.getValue(),
         model = collection.at(this._lastTapIndex),
         recordType = "XM." + model.get("activityType");
@@ -166,7 +238,7 @@ trailing:true, white:true, strict: false*/
         this.inherited(arguments);
         model.id = oldId;
       }
-    },
+    }
   });
 
   // ..........................................................
@@ -350,7 +422,6 @@ trailing:true, white:true, strict: false*/
       {attribute: 'firstName'},
       {attribute: 'primaryEmail'}
     ]},
-    allowPrint: true,
     parameterWidget: "XV.ContactListParameters",
     components: [
       {kind: "XV.ListItem", components: [
@@ -585,6 +656,9 @@ trailing:true, white:true, strict: false*/
           ]},
           {kind: "XV.ListColumn", classes: "last", fit: true, components: [
             {kind: "XV.ListAttr", attr: "name"}
+          ]},
+          {kind: "XV.ListColumn", classes: "last", fit: true, components: [
+            {kind: "XV.ListAttr", attr: "isBase"}
           ]}
         ]}
       ]}
@@ -603,7 +677,6 @@ trailing:true, white:true, strict: false*/
     query: {orderBy: [
       {attribute: 'number'}
     ]},
-    allowPrint: true,
     multiSelect: true,
     parameterWidget: "XV.CustomerListParameters",
     components: [
@@ -617,10 +690,13 @@ trailing:true, white:true, strict: false*/
             {kind: "XV.ListAttr", attr: "billingContact.phone", },
             {kind: "XV.ListAttr", attr: "billingContact.primaryEmail"}
           ]},
-          {kind: "XV.ListColumn", fit: true, components: [
+          {kind: "XV.ListColumn", classes: "descr", components: [
             {kind: "XV.ListAttr", attr: "billingContact.name",
               placeholder: "_noContact".loc()},
             {kind: "XV.ListAttr", attr: "billingContact.address"}
+          ]},
+          {kind: "XV.ListColumn", fit: true, components: [
+            {kind: "XV.ListAttr", attr: "customerType.code"}
           ]}
         ]}
       ]}
@@ -918,10 +994,10 @@ trailing:true, white:true, strict: false*/
           {kind: "XV.ListColumn", classes: "third", components: [
             {kind: "XV.ListAttr", attr: "shared", formatter: "formatShared"}
           ]},
-          {kind: "XV.ListColumn", classes: "icon", components: [
+          {kind: "XV.ListColumn",  components: [
             {tag: "i", classes: "icon-remove list-icon", ontap: "removeRow"}
           ]},
-          {kind: "XV.ListColumn", classes: "icon", components: [
+          {kind: "XV.ListColumn", components: [
             {tag: "i", classes: "icon-signout list-icon", ontap: "shareRow"}
           ]}
         ]}
@@ -1045,7 +1121,6 @@ trailing:true, white:true, strict: false*/
       {attribute: 'updated', descending: true},
       {attribute: 'number', descending: true, numeric: true}
     ]},
-    allowPrint: true,
     toggleSelected: false,
     parameterWidget: "XV.IncidentListParameters",
     components: [
@@ -1156,7 +1231,6 @@ trailing:true, white:true, strict: false*/
     name: "XV.InvoiceList",
     kind: "XV.List",
     multiSelect: true,
-    allowPrint: true,
     label: "_invoices".loc(),
     parameterWidget: "XV.InvoiceListParameters",
     collection: "XM.InvoiceListItemCollection",
@@ -1169,8 +1243,9 @@ trailing:true, white:true, strict: false*/
       {name: "post", privilege: "PostMiscInvoices", prerequisite: "canPost",
         method: "doPost" },
       {name: "print", privilege: "PrintInvoices", method: "doPrint", isViewMethod: true },
+      {name: "email", privilege: "PrintInvoices", method: "doEmail", isViewMethod: true},
       {name: "download", privilege: "PrintInvoices", method: "doDownload",
-        isViewMethod: true }
+        isViewMethod: true}
     ],
     components: [
       {kind: "XV.ListItem", components: [
@@ -1197,26 +1272,6 @@ trailing:true, white:true, strict: false*/
         ]}
       ]}
     ],
-    create: function () {
-      if (XT.session.config.emailAvailable) {
-        this.actions.push({name: "email", method: "doEmail" });
-      }
-      this.inherited(arguments);
-    },
-    doPrint: function (options) {
-      if (XT.session.config.printAvailable) {
-        // send it to be printed silently by the server
-        options.model.doPrint();
-      } else {
-        // no print server set up: just pop open a tab
-        window.open(XT.getOrganizationPath() + options.model.getReportUrl(),
-          "_newtab");
-      }
-    },
-    doDownload: function (options) {
-      window.open(XT.getOrganizationPath() + options.model.getReportUrl("download"),
-        "_newtab");
-    },
     // some extensions may override this function (i.e. inventory)
     formatAddress: function (value, view, model) {
       var city = model.get("billtoCity"),
@@ -1325,7 +1380,7 @@ trailing:true, white:true, strict: false*/
     name: "XV.ItemGroupList",
     kind: "XV.List",
     label: "_itemGroups".loc(),
-    collection: "XM.ItemGroupCollection",
+    collection: "XM.ItemGroupRelationCollection",
     query: {orderBy: [
       {attribute: 'name'}
     ]},
@@ -1444,7 +1499,6 @@ trailing:true, white:true, strict: false*/
       {attribute: 'name'},
       {attribute: 'number', numeric: true}
     ]},
-    allowPrint: true,
     label: "_opportunities".loc(),
     parameterWidget: "XV.OpportunityListParameters",
     components: [
@@ -1668,7 +1722,6 @@ trailing:true, white:true, strict: false*/
     query: {orderBy: [
       {attribute: 'number'}
     ]},
-    allowPrint: true,
     parameterWidget: "XV.ProspectListParameters",
     components: [
       {kind: "XV.ListItem", components: [
@@ -1742,30 +1795,33 @@ trailing:true, white:true, strict: false*/
     label: "_salesOrders".loc(),
     collection: "XM.SalesOrderListItemCollection",
     parameterWidget: "XV.SalesOrderListParameters",
-    actions: [],
+    actions: [
+      {name: "print", privilege: "ViewSalesOrders", method: "doPrint", isViewMethod: true},
+      {name: "email", privilege: "ViewSalesOrders", method: "doEmail", isViewMethod: true}
+    ],
     query: {orderBy: [
       {attribute: 'number'}
     ]},
     components: [
       {kind: "XV.ListItem", components: [
         {kind: "FittableColumns", components: [
-          {kind: "XV.ListColumn", classes: "first", components: [
-            {kind: "FittableColumns", components: [
-              {kind: "XV.ListAttr", attr: "number", isKey: true, fit: true},
-              {kind: "XV.ListAttr", attr: "formatStatus",
-                style: "padding-left: 24px"},
-              {kind: "XV.ListAttr", attr: "scheduleDate",
-                classes: "right", placeholder: "_noSchedule".loc()}
+          {kind: "FittableColumns", components: [
+            {kind: "XV.ListColumn", classes: "name-column", components: [
+              {kind: "XV.ListAttr", attr: "number", isKey: true},
+              {kind: "XV.ListAttr", attr: "customer.name"}
             ]},
-            {kind: "FittableColumns", components: [
-              {kind: "XV.ListAttr", attr: "customer.name"},
-              {kind: "XV.ListAttr", attr: "total", formatter: "formatTotal",
-                classes: "right"}
+            {kind: "XV.ListColumn", components: [
+              {kind: "XV.ListAttr", attr: "formatStatus"}
+            ]},
+            {kind: "XV.ListColumn", classes: "right-column", components: [
+              {kind: "XV.ListAttr", attr: "scheduleDate",
+                placeholder: "_noSchedule".loc()},
+              {kind: "XV.ListAttr", attr: "total", formatter: "formatTotal"}
+            ]},
+            {kind: "XV.ListColumn", fit: true, components: [
+              {kind: "XV.ListAttr", formatter: "formatName"},
+              {kind: "XV.ListAttr", formatter: "formatShiptoOrBillto"}
             ]}
-          ]},
-          {kind: "XV.ListColumn", classes: "last", components: [
-            {kind: "XV.ListAttr", formatter: "formatName"},
-            {kind: "XV.ListAttr", formatter: "formatShiptoOrBillto"}
           ]}
         ]}
       ]}
@@ -1810,6 +1866,7 @@ trailing:true, white:true, strict: false*/
     }
   });
 
+  XV.registerModelList("XM.SalesOrderListItem", "XV.SalesOrderList");
   XV.registerModelList("XM.SalesOrderRelation", "XV.SalesOrderList");
 
   // ..........................................................
@@ -1885,7 +1942,7 @@ trailing:true, white:true, strict: false*/
 
         afterSalesOrderCreated = function () {
           var value = this.getValue(),
-            gridBox = this.$.salesOrderLineItemGridBox;
+            gridBox = this.$.salesOrderLineItemBox;
 
           value.setStatus(XM.Model.BUSY_FETCHING);
           value.set(attrs);
@@ -2388,7 +2445,6 @@ trailing:true, white:true, strict: false*/
       {attribute: 'dueDate'},
       {attribute: 'name'}
     ]},
-    allowPrint: true,
     components: [
       {kind: "XV.ListItem", components: [
         {kind: "FittableColumns", components: [
@@ -2480,6 +2536,8 @@ trailing:true, white:true, strict: false*/
     ]
   });
 
+  XV.registerModelList("XM.UserAccountRelation", "XV.UserAccountList");
+
   // ..........................................................
   // STATES AND COUNTRIES
   //
@@ -2532,7 +2590,6 @@ trailing:true, white:true, strict: false*/
     query: {orderBy: [
       {attribute: 'number'}
     ]},
-    allowPrint: true,
     parameterWidget: "XV.VendorListParameters",
     components: [
       {kind: "XV.ListItem", components: [
@@ -2604,7 +2661,7 @@ trailing:true, white:true, strict: false*/
     components: [
       {kind: "XV.ListItem", components: [
         {kind: "FittableColumns", components: [
-          {kind: "XV.ListColumn", classes: "short",
+          {kind: "XV.ListColumn", classes: "first",
             components: [
             {kind: "XV.ListAttr", attr: "name", isKey: true}
           ]}

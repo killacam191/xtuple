@@ -177,6 +177,20 @@ white:true*/
   /**
     @class
 
+    @extends XM.Info
+  */
+  XM.ItemGroupRelation = XM.Info.extend({
+    /** @scope XM.ItemGroupRelation.prototype */
+
+    recordType: 'XM.ItemGroupRelation',
+
+    editableModel: "XM.ItemGroup"
+
+  });
+
+  /**
+    @class
+
     @extends XM.Model
   */
   XM.ItemGroupItem = XM.Model.extend({
@@ -642,76 +656,6 @@ white:true*/
 
     @extends XM.Model
   */
-  XM.ItemAccount = XM.Model.extend({
-    /** @scope XM.ItemAccount.prototype */
-
-    recordType: 'XM.ItemAccount',
-
-    isDocumentAssignment: true
-
-  });
-
-  /**
-    @class
-
-    @extends XM.Model
-  */
-  XM.ItemContact = XM.Model.extend({
-    /** @scope XM.ItemContact.prototype */
-
-    recordType: 'XM.ItemContact',
-
-    isDocumentAssignment: true
-
-  });
-
-  /**
-    @class
-
-    @extends XM.Model
-  */
-  XM.ItemItem = XM.Model.extend({
-    /** @scope XM.ItemItem.prototype */
-
-    recordType: 'XM.ItemItem',
-
-    isDocumentAssignment: true
-
-  });
-
-  /**
-    @class
-
-    @extends XM.Model
-  */
-  XM.ItemFile = XM.Model.extend({
-    /** @scope XM.ItemFile.prototype */
-
-    recordType: 'XM.ItemFile',
-
-    isDocumentAssignment: true
-
-  });
-
-  /**
-    @class
-
-    @extends XM.Model
-  */
-  XM.ItemUrl = XM.Model.extend({
-    /** @scope XM.ItemUrl.prototype */
-
-    recordType: 'XM.ItemUrl',
-
-    isDocumentAssignment: true
-
-  });
-
-  /**
-    @class
-
-    @extends XM.Model
-  */
   XM.ItemRelation = XM.Info.extend({
     /** @scope XM.ItemRelatino.prototype */
 
@@ -722,6 +666,12 @@ white:true*/
     descriptionKey: 'description1'
 
   });
+
+  XT.documentAssociations.I = {
+    model: "XM.ItemRelation",
+    label: "_item".loc()
+  };
+
 
   // Add in item mixin
   XM.ItemRelation = XM.ItemRelation.extend(XM.ItemMixin);
@@ -773,10 +723,10 @@ white:true*/
 
    @extends XM.Collection
   */
-  XM.ItemGroupCollection = XM.Collection.extend({
-   /** @scope XM.ItemGroupCollection.prototype */
+  XM.ItemGroupRelationCollection = XM.Collection.extend({
+   /** @scope XM.ItemGroupRelationCollection.prototype */
 
-    model: XM.ItemGroup
+    model: XM.ItemGroupRelation
 
   });
 

@@ -20,7 +20,7 @@ Backbone:true, _:true, X:true, __dirname:true, exports:true, module: true */
       getAdminCredentials: function (organization) {
         return {
           user: X.options.databaseServer.user,
-          hostname: X.options.databaseServer.hostname,
+          host: X.options.databaseServer.hostname,
           port: X.options.databaseServer.port,
           database: organization,
           password: X.options.databaseServer.password
@@ -92,7 +92,7 @@ Backbone:true, _:true, X:true, __dirname:true, exports:true, module: true */
         var creds = {
           "user": options.user,
           "port": options.port,
-          "host": options.hostname,
+          "host": options.host || options.hostname,
           "database": options.database,
           "password": options.password
         };
@@ -115,10 +115,10 @@ Backbone:true, _:true, X:true, __dirname:true, exports:true, module: true */
           // options.debugDatabase = X.options.datasource.debugDatabase;
           // worker.send({id: this.requestNum, query: query, options: options, creds: creds});
         } else {
-          if (X.options && X.options.datasource.debugging &&
-              query.indexOf('select xt.delete($${"nameSpace":"SYS","type":"SessionStore"') < 0 &&
+          if (X.options && query.indexOf('select xt.delete($${"nameSpace":"SYS","type":"SessionStore"') < 0 &&
               query.indexOf('select xt.get($${"nameSpace":"SYS","type":"SessionStore"') < 0) {
-            X.log(query);
+            X.capture(query);
+            X.debug(query);
           }
           X.pg.connect(creds, _.bind(this.connected, this, query, options, callback));
         }
@@ -140,7 +140,7 @@ Backbone:true, _:true, X:true, __dirname:true, exports:true, module: true */
 
         if (err) {
           issue(X.warning("Failed to connect to database: " +
-            "{hostname}:{port}/{database} => %@".f(options, err.message)));
+            "{host}:{port}/{database} => %@".f(options, err.message)));
           done();
           return callback(err);
         }
@@ -324,10 +324,6 @@ Backbone:true, _:true, X:true, __dirname:true, exports:true, module: true */
         query = "select xt.{method}($${payload}$$) as request"
                 .replace("{method}", method)
                 .replace("{payload}", payload);
-
-        //if (X.options.datasource.debugging) {
-        //  X.log("Query from model: ", query);
-        //}
 
         if (options.database) {
           conn.database = options.database;

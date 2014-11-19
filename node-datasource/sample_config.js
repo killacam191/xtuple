@@ -14,6 +14,7 @@ newcap:true, noarg:true, regexp:true, undef:true, strict:true, trailing:true, wh
     },
     datasource: {
       debugging: false,
+      capture: false,
       debugDatabase: false,
       enhancedAuthKey: "xTuple",
       sessionTimeout: 60,
@@ -27,6 +28,7 @@ newcap:true, noarg:true, regexp:true, undef:true, strict:true, trailing:true, wh
       // on a different port
       proxyPort: null,
       port: 8443,
+      encryptionKeyFile: "./lib/private/encryption_key.txt",
       keyFile: "./lib/private/key.pem",
       certFile: "./lib/private/server.crt",
       caFile: null, // needs to be an array of strings
@@ -41,6 +43,7 @@ newcap:true, noarg:true, regexp:true, undef:true, strict:true, trailing:true, wh
       smtpPort: 587,
       smtpUser: "",
       smtpPassword: "",
+      printer: "",
 
       // these properties are dynamically registered with the
       // node discovery service
@@ -71,9 +74,10 @@ newcap:true, noarg:true, regexp:true, undef:true, strict:true, trailing:true, wh
       password: "admin"
     },
     biServer: {
-      bihost: "localhost",
-      port: 8080,
-      httpsport: 8443,
+      bihttphost: "localhost",
+      bihttpport: 8080,
+      bihttpshost: "localhost",
+      bihttpsport: 8443,
       catalog: "xTuple",
       tenantname: "default",
       restkeyfile: "/etc/xtuple/lib/rest-keys"

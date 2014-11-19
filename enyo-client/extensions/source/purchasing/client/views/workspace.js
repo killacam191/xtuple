@@ -91,7 +91,7 @@ trailing:true, white:true, strict: false*/
 
     extensions = [
       {kind: "XV.Groupbox", name: "supplyPanel", title: "_supply".loc(),
-        fit: true, components: [
+        components: [
         {kind: "onyx.GroupboxHeader", content: "_supply".loc()},
         {kind: "XV.CheckboxWidget", attr: "isPurchased", name: "isPurchased"}
       ], container: "panels"}
@@ -144,7 +144,7 @@ trailing:true, white:true, strict: false*/
               {kind: "onyx.GroupboxHeader", content: "_description".loc()},
               {kind: "XV.TextArea", attr: "vendorItemDescription", label: "_description".loc()},
               {kind: "onyx.GroupboxHeader", content: "_manufacturer".loc()},
-              {kind: "XV.ItemSourceManufacturerCombobox", attr: "manufacturerName", label: "_name".loc()},
+              {kind: "XV.InputWidget", attr: "manufacturerName", label: "_name".loc()},
               {kind: "XV.InputWidget", attr: "manufacturerItemNumber", label: "_number".loc()},
               {kind: "onyx.GroupboxHeader", content: "_description".loc()},
               {kind: "XV.TextArea", attr: "manufacturerItemDescription", fit: true}
@@ -205,13 +205,25 @@ trailing:true, white:true, strict: false*/
     // ..........................................................
     // PURCHASE ORDER
     //
-
     enyo.kind({
       name: "XV.PurchaseOrderWorkspace",
       kind: "XV.Workspace",
       title: "_purchaseOrder".loc(),
       model: "XM.PurchaseOrder",
       printOnSaveSetting: "DefaultPrintPOOnSave",
+      actions: [{
+        name: "print",
+        isViewMethod: true,
+        label: "_print".loc(),
+        privilege: "ViewPurchaseOrders",
+        prerequisite: "isReadyClean"
+      },
+      {name: "email",
+        isViewMethod: true,
+        label: "_email".loc(),
+        privilege: "ViewPurchaseOrders",
+        prerequisite: "isReadyClean"
+      }],
       headerAttrs: ["number", "-", "vendor.name"],
       components: [
         {kind: "Panels", arrangerKind: "CarouselArranger",
@@ -253,7 +265,6 @@ trailing:true, white:true, strict: false*/
               {kind: "XV.TextArea", attr: "notes", fit: true}
             ]}
           ]},
-          {kind: "FittableRows", title: "_lineItems".loc(), name: "lineItemsPanel"},
           {kind: "XV.Groupbox", name: "settingsPanel", title: "_settings".loc(),
             components: [
             {kind: "onyx.GroupboxHeader", content: "_settings".loc()},
@@ -271,8 +282,7 @@ trailing:true, white:true, strict: false*/
               ]}
             ]}
           ]},
-          {kind: "FittableRows", title: "_workflow".loc(), name: "workflowPanel"},
-          {kind: "XV.PurchaseOrderCommentBox", attr: "comments"}
+          {kind: "XV.PurchaseOrderCommentBox", name: "commentsPanel", attr: "comments"}
         ]}
       ],
       attributesChanged: function (inSender, inEvent) {
@@ -288,20 +298,22 @@ trailing:true, white:true, strict: false*/
       create: function () {
         this.inherited(arguments);
         if (enyo.platform.touch) {
-          this.$.lineItemsPanel.createComponents([
+          this.$.panels.createComponents([
             {kind: "XV.PurchaseOrderLineBox", name: "purchaseOrderLineItemBox",
-              attr: "lineItems", fit: true}
+              attr: "lineItems", addBefore: this.$.settingsPanel}
           ], {owner: this});
-          this.$.workflowPanel.createComponents([
-            {kind: "XV.PurchaseOrderWorkflowBox", attr: "workflow", fit: true}
+          this.$.panels.createComponents([
+            {kind: "XV.PurchaseOrderWorkflowBox", attr: "workflow",
+              addBefore: this.$.commentsPanel}
           ], {owner: this});
         } else {
-          this.$.lineItemsPanel.createComponents([
+          this.$.panels.createComponents([
             {kind: "XV.PurchaseOrderLineGridBox", name: "purchaseOrderLineItemBox",
-              attr: "lineItems", fit: true}
+              attr: "lineItems", addBefore: this.$.settingsPanel}
           ], {owner: this});
-          this.$.workflowPanel.createComponents([
-            {kind: "XV.PurchaseOrderWorkflowGridBox", attr: "workflow", fit: true}
+          this.$.panels.createComponents([
+            {kind: "XV.PurchaseOrderWorkflowGridBox", attr: "workflow",
+              addBefore: this.$.commentsPanel}
           ], {owner: this});
         }
         this.processExtensions(true);
@@ -465,7 +477,7 @@ trailing:true, white:true, strict: false*/
               {kind: "onyx.GroupboxHeader", content: "_description".loc()},
               {kind: "XV.TextArea", attr: "vendorItemDescription", label: "_description".loc()},
               {kind: "onyx.GroupboxHeader", content: "_manufacturer".loc()},
-              {kind: "XV.ItemSourceManufacturerCombobox", attr: "manufacturerName", label: "_name".loc()},
+              {kind: "XV.InputWidget", attr: "manufacturerName", label: "_name".loc()},
               {kind: "XV.InputWidget", attr: "manufacturerItemNumber", label: "_itemNumber".loc()},
               {kind: "onyx.GroupboxHeader", content: "_description".loc()},
               {kind: "XV.TextArea", attr: "manufacturerItemDescription", fit: true}

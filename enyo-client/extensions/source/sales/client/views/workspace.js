@@ -54,7 +54,6 @@ trailing:true, white:true*/
                 label: "_nextNumber".loc(), formatting: false},
               {kind: "XV.ToggleButtonWidget", attr: "DefaultPrintSOOnSave",
                 label: "_printOnSave".loc()},
-
               {kind: "onyx.GroupboxHeader", content: "_quote".loc()},
               {kind: "XV.NumberPolicyPicker", attr: "QUNumberGeneration",
                 label: "_number".loc() + " " + "_policy".loc()},
@@ -171,7 +170,7 @@ trailing:true, white:true*/
       {kind: "XV.MoneyWidget",
         attr: {localValue: "authorizedCredit", currency: "currency"},
         label: "_authorizedCredit".loc(), currencyShowing: false,
-        container: "invoiceLineItemBox.summaryPanel.summaryColumnOne",
+        container: "lineItemBox.summaryPanel.summaryColumnOne",
         defer: true},
       {kind: "XV.InputWidget", container: "mainSubgroup", addBefore: "isPosted",
         attr: "orderNumber"},
